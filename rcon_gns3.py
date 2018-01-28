@@ -504,12 +504,12 @@ def main():
             """=======================\n\n"""
             """Choose an option:\n"""
             """1) Connect to nodes in current project\n"""
-            """2) Switch project [%s]\n"""
-            """3) Set GNS3 server [%s:%s]\n"""
+            """2) Set GNS3 server [%s:%s]\n"""
+            """3) Switch project [%s]\n"""
             """4) Set Telnet client [%s]\n"""
             """5) Set VNC client [%s]\n"""
             """6) Exit\n""" \
-                % (config_project_name, config_ip, config_port, \
+                % (config_ip, config_port, config_project_name, \
                    config_console_telnet, config_console_vnc))
         main_choice = raw_input("Enter your choice: ")
 
