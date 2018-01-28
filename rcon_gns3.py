@@ -10,9 +10,9 @@ computers don't have enough resources to run virtualized devices.
 from __future__ import print_function
 from time import sleep
 import json
-import urllib2
 import os
-
+import sys
+import urllib2
 
 def load_config():
     """
@@ -29,7 +29,7 @@ def write_config(new_config):
     Writes the modified settings to the config file
     """
     with open("config.json", "w") as config_file:
-        json.dump(new_config, config_file)
+        json.dump(new_config, config_file, indent=4, sort_keys=True)
         return
 
 
@@ -130,24 +130,6 @@ def console_connect():
     config_console_telnet = config["console"]["telnet_selected"]
     config_console_vnc = config["console"]["vnc_selected"]
 
-    devnull = ' >/dev/null 2>/dev/null &'
-
-    telnet_cmd = {"Xterm": 'xterm -T "%s" -e "telnet %s %s"' + devnull,
-                  "Putty": 'putty -title "%s" -telnet %s %s -fg SALMON1 -bg BLACK' + devnull,
-                  "Gnome Terminal": 'gnome-terminal -t "%s" -e "telnet %s %s"' + devnull,
-                  "Xfce4 Terminal": 'xfce4-terminal --tab -T "%s" -e "telnet %s %s"' + devnull,
-                  "ROXTerm": 'roxterm -n "%s" --tab -e "telnet %s %s"' + devnull,
-                  "KDE Konsole": 'konsole --new-tab -p tabtitle="%s" -e "telnet %s %s"' + devnull,
-                  "SecureCRT": 'SecureCRT /T /N "%s"  /TELNET %s %s' + devnull,
-                  "Mate Terminal": 'mate-terminal --tab -e "telnet %s %s" -t "%s"' + devnull,
-                  "Custom": '%s' % config["console"]["telnet_custom"] + devnull}
-
-    vnc_cmd = {
-        "TightVNC": 'vncviewer %s:%s' + devnull,
-        "Vinagre": 'vinagre %s:%s' + devnull,
-        "gvncviewer": 'gvncviewer %s:%s' + devnull,
-        "Custom" : '%s' % config["console"]["vnc_custom"] + devnull}
-
     node_menu = True
     while node_menu:
         # Get a list of nodes of the selected project
@@ -190,36 +172,41 @@ def console_connect():
                     node_menu = False
                 elif node_choice == i-2: # Opening all nodes
                     for node in parsed_nodes:
-                        print(node)
                         if node[3] == "telnet":
-                            # The following command selects the telnet command from the
-                            # predefined list, then replaces the %s variables with the
-                            # name, ip, and port values. Then the command is executed.
-                            console_cmd = telnet_cmd[config_console_telnet] % \
-                                                (node[0], \
-                                                node[1], \
-                                                node[2])
-                            os.system(console_cmd)
+                            if config_console_telnet == "Custom":
+                                console_cmd = config["console"]["telnet_custom"].replace("%d", node[0])
+                                console_cmd = console_cmd.replace("%h", node[1])
+                                console_cmd = console_cmd.replace("%p", str(node[2]))
+                            else:
+                                # The following command selects the telnet command from the
+                                # predefined list, then replaces the %s variables with the
+                                # name, ip, and port values. Then the command is executed.
+                                console_cmd = TELNET_CMD[config_console_telnet].replace("%d", node[0])
+                                console_cmd = console_cmd.replace("%h", node[1])
+                                console_cmd = console_cmd.replace("%p", str(node[2]))
                         elif node[3] == "vnc":
-                            console_cmd = vnc_cmd[config_console_vnc] % ( \
-                                                node[1], \
-                                                node[2])
-                            os.system(console_cmd)
+                            if config_console_vnc == "Custom":
+                                console_cmd = config["console"]["vnc_custom"].replace("%h", node[1])
+                                console_cmd = console_cmd.replace("%p", str(node[2]))
+                            else:
+                                console_cmd = VNC_CMD[config_console_vnc].replace("%h", node[1])
+                                console_cmd = console_cmd.replace("%p", str(node[2]))
+                        os.system(console_cmd)
                         sleep(0.333)
                 else: # Opening the selected node
                     selected_node = node_choice-1 # List count starts from zero; our list from 1
+
                     # Checks if the node required telnet or VNCm then, as above, replaces the
-                    # %s variables witn the name, ip, and port values. Then the command is executed
+                    # %d/%h/%p variables witn the name, ip, and port values.
+                    # Then the command is executed.
                     if parsed_nodes[selected_node][3] == "telnet":
-                        console_cmd = telnet_cmd[config_console_telnet] % \
-                                            (parsed_nodes[selected_node][0], \
-                                            parsed_nodes[selected_node][1], \
-                                            parsed_nodes[selected_node][2])
+                        console_cmd = TELNET_CMD[config_console_telnet].replace("%d", parsed_nodes[selected_node][0])
+                        console_cmd = console_cmd.replace("%h", parsed_nodes[selected_node][1])
+                        console_cmd = console_cmd.replace("%p", str(parsed_nodes[selected_node][2]))
                         os.system(console_cmd)
                     elif parsed_nodes[selected_node][3] == "vnc":
-                        console_cmd = vnc_cmd[config_console_vnc] % ( \
-                                            parsed_nodes[selected_node][1], \
-                                            parsed_nodes[selected_node][2])
+                        console_cmd = VNC_CMD[config_console_vnc].replace("%h", parsed_nodes[selected_node][1])
+                        console_cmd = console_cmd.replace("%p", str(parsed_nodes[selected_node][2]))
                         os.system(console_cmd)
     return
 
@@ -294,18 +281,205 @@ def set_server(old_ip, old_port):
             return
 
 
-def set_telnet(old_telnet):
+def set_telnet():
     """
     Changing the Telnet client.
     """
-    pass
+    config = load_config()
+    config_console_telnet = config["console"]["telnet_selected"]
+    config_custom_cmd = config["console"]["telnet_custom"]
+    telnet_menu = True
+    telnet_new = None
+    telnet_custom_new = None
+
+    while telnet_menu:
+        telnet_menu = False
+        os.system("cls" if os.name == "nt" else "clear")
+        print(
+            """Remote Console for GNS3\n"""
+            """=======================\n\n"""
+            """Choose an option:\n""")
+        if sys.platform.startswith("win"):
+            print(
+                """1) Putty"""
+                """2) MobaXterm"""
+                """3) Royal TS"""
+                """4) SuperPutty"""
+                """5) SecureCRT"""
+                """6) SecureCRT (personal profile)"""
+                """7) TeraTerm Pro"""
+                """8) Telnet"""
+                """9) Xshell 4"""
+                """10) Xshell 5"""
+                """11) ZOC 6"""
+                """12) Custom [%s]"""
+                """13) Return to main menu""" % config_custom_cmd)
+
+            telnet_choice = raw_input("Enter your choice [%s]: " % config_console_telnet)
+
+            if not telnet_choice:
+                telnet_choice = "13"
+
+            if telnet_choice == "1":
+                telnet_new = "Putty"
+            elif telnet_choice == "2":
+                telnet_new = "MobaXterm"
+            elif telnet_choice == "3":
+                telnet_new = "Royal TS"
+            elif telnet_choice == "4":
+                telnet_new = "SuperPutty"
+            elif telnet_choice == "5":
+                telnet_new = "SecureCRT"
+            elif telnet_choice == "6":
+                telnet_new = "SecureCRT (personal profile)"
+            elif telnet_choice == "7":
+                telnet_new = "TeraTerm Pro"
+            elif telnet_choice == "8":
+                telnet_new = "Telnet"
+            elif telnet_choice == "9":
+                telnet_new = "Xshell 4"
+            elif telnet_choice == "10":
+                telnet_new = "Xshell 5"
+            elif telnet_choice == "11":
+                telnet_new = "ZOC 6"
+            elif telnet_choice == "12":
+                telnet_custom_new = raw_input("Enter the custom command: ")
+                telnet_new = "Custom"
+            elif telnet_choice == "13":
+                telnet_menu = False
+            else:
+                telnet_menu = True
+                raw_input("Error: Wrong selection. Press Enter to continue.")
+            # I know this was awful but python dictionaries are
+            # unordered and this is a static list.
+
+        else:
+            print(
+                """1) Xterm\n"""
+                """2) Putty\n"""
+                """3) Gnome Terminal\n"""
+                """4) Xfce4 Terminal\n"""
+                """5) ROXTerm\n"""
+                """6) KDE Konsole\n"""
+                """7) SecureCRT\n"""
+                """8) Mate Terminal\n"""
+                """9) urxvt\n"""
+                """10) Custom [%s]\n"""
+                """11) Return to main menu\n""" % config_custom_cmd)
+            telnet_choice = raw_input("Enter your choice [%s]: " % config_console_telnet)
+
+            if not telnet_choice:
+                telnet_choice = "11"
+
+            if telnet_choice == "1":
+                telnet_new = "Xterm"
+            elif telnet_choice == "2":
+                telnet_new = "Putty"
+            elif telnet_choice == "3":
+                telnet_new = "Gnome Terminal"
+            elif telnet_choice == "4":
+                telnet_new = "Xfce4 Terminal"
+            elif telnet_choice == "5":
+                telnet_new = "ROXTerm"
+            elif telnet_choice == "6":
+                telnet_new = "KDE Konsole"
+            elif telnet_choice == "7":
+                telnet_new = "SecureCRT"
+            elif telnet_choice == "8":
+                telnet_new = "Mate Terminal"
+            elif telnet_choice == "9":
+                telnet_new = "urxvt"
+            elif telnet_choice == "10":
+                telnet_custom_new = raw_input("Enter the custom command: ")
+                telnet_new = "Custom"
+            elif telnet_choice == "11":
+                telnet_menu = False
+            else:
+                telnet_menu = True
+                raw_input("Error: Wrong selection. Press Enter to continue.")
+    if telnet_new:
+        config["console"]["telnet_selected"] = telnet_new
+        if telnet_custom_new:
+            config["console"]["telnet_custom"] = telnet_custom_new
+        write_config(config)
+    return
 
 
-def set_vnc(old_vnc):
+def set_vnc():
     """
     Changing the VNC client.
     """
-    pass
+    config = load_config()
+    config_console_vnc = config["console"]["vnc_selected"]
+    config_custom_cmd = config["console"]["vnc_custom"]
+    vnc_menu = True
+    vnc_new = None
+    vnc_custom_new = None
+
+    while vnc_menu:
+        vnc_menu = False
+        os.system("cls" if os.name == "nt" else "clear")
+        print(
+            """Remote Console for GNS3\n"""
+            """=======================\n\n"""
+            """Choose an option:\n""")
+        if sys.platform.startswith("win"):
+            print(
+                """1) TightVNC"""
+                """2) UltraVNC"""
+                """3) Custom [%s]"""
+                """4) Return to main menu""" % config_custom_cmd)
+
+            vnc_choice = raw_input("Enter your choice [%s]: " % config_console_vnc)
+
+            if not vnc_choice:
+                vnc_choice = "4"
+
+            if vnc_choice == "1":
+                vnc_new = "TightVNC"
+            elif vnc_choice == "2":
+                vnc_new = "UltraVNC"
+            elif vnc_choice == "3":
+                vnc_custom_new = raw_input("Enter the custom command: ")
+                vnc_new = "Custom"
+            elif vnc_choice == "4":
+                vnc_menu = False
+            else:
+                vnc_menu = True
+                raw_input("Error: Wrong selection. Press Enter to continue.")
+
+        else:
+            print(
+                """1) TightVNC\n"""
+                """2) vinagre\n"""
+                """3) gvncviewer\n"""
+                """4) Custom [%s]\n"""
+                """5) Return to main menu\n""" % config_custom_cmd)
+            vnc_choice = raw_input("Enter your choice [%s]: " % config_console_vnc)
+
+            if not vnc_choice:
+                vnc_choice = "5"
+
+            if vnc_choice == "1":
+                vnc_new = "TightVNC"
+            elif vnc_choice == "2":
+                vnc_new = "vinagre"
+            elif vnc_choice == "3":
+                vnc_new = "gvncviewer"
+            elif vnc_choice == "4":
+                vnc_custom_new = raw_input("Enter the custom command: ")
+                vnc_new = "Custom"
+            elif vnc_choice == "5":
+                vnc_menu = False
+            else:
+                vnc_menu = True
+                raw_input("Error: Wrong selection. Press Enter to continue.")
+    if vnc_new:
+        config["console"]["vnc_selected"] = vnc_new
+        if vnc_custom_new:
+            config["console"]["vnc_custom"] = vnc_custom_new
+        write_config(config)
+    return
 
 
 def main():
@@ -347,13 +521,55 @@ def main():
         elif main_choice == "3":
             set_server(config_ip, config_port)
         elif main_choice == "4":
-            set_telnet(config_console_telnet)
+            set_telnet()
         elif main_choice == "5":
-            set_vnc(config_console_vnc)
+            set_vnc()
         elif main_choice == "6":
             main_menu = False
         else:
             raw_input("Error: Wrong selection. Press Enter to continue.")
+
+if sys.platform.startswith("win"):
+    userprofile = os.path.expandvars("%USERPROFILE%")
+    if "PROGRAMFILES(X86)" in os.environ:
+        # windows 64-bit
+        program_files = os.environ["PROGRAMFILES"]
+        program_files_x86 = os.environ["PROGRAMFILES(X86)"]
+    else:
+        # windows 32-bit
+        program_files_x86 = program_files = os.environ["PROGRAMFILES"]
+
+    TELNET_CMD = {'Putty': 'putty.exe -telnet %h %p -wt "%d" -gns3 5 -skin 4',
+                  'MobaXterm': r'"{}\Mobatek\MobaXterm Personal Edition\MobaXterm.exe" -newtab "telnet %h %p"'.format(program_files_x86),
+                  'Royal TS': '{}\code4ward.net\Royal TS V3\RTS3App.exe /connectadhoc:%h /adhoctype:terminal /p:IsTelnetConnection="true" /p:ConnectionType="telnet;Telnet Connection" /p:Port="%p" /p:Name="%d"'.format(program_files),
+                  'SuperPutty': r'SuperPutty.exe -telnet "%h -P %p -wt \"%d\""',
+                  'SecureCRT': r'"{}\VanDyke Software\SecureCRT\SecureCRT.exe" /N "%d" /T /TELNET %h %p'.format(program_files),
+                  'SecureCRT (personal profile)': r'"{}\AppData\Local\VanDyke Software\SecureCRT\SecureCRT.exe" /T /N "%d" /TELNET %h %p'.format(userprofile),
+                  'TeraTerm Pro': r'"{}\teraterm\ttermpro.exe" /W="%d" /M="ttstart.macro" /T=1 %h %p'.format(program_files_x86),
+                  'Telnet': 'telnet %h %p',
+                  'Xshell 4': r'"{}\NetSarang\Xshell 4\xshell.exe" -url telnet://%h:%p'.format(program_files_x86),
+                  'Xshell 5': r'"{}\NetSarang\Xshell 5\xshell.exe" -url telnet://%h:%p -newtab %d'.format(program_files_x86),
+                  'ZOC 6': r'"{}\ZOC6\zoc.exe" "/TELNET:%h:%p" /TABBED "/TITLE:%d"'.format(program_files_x86)}
+
+    VNC_CMD = {'TightVNC': 'tvnviewer.exe %h:%p',
+               'UltraVNC': 'C:\\Program Files\\uvnc bvba\\UltraVNC\\vncviewer.exe %h:%p'
+    }
+
+else:
+    devnull = ' >/dev/null 2>/dev/null &'
+    TELNET_CMD = {'Xterm': 'xterm -T "%d" -e "telnet %h %p"' + devnull,
+                  'Putty': 'putty -telnet %h %p -title "%d" -sl 2500 -fg SALMON1 -bg BLACK' + devnull,
+                  'Gnome Terminal': 'gnome-terminal -t "%d" -e "telnet %h %p"' + devnull,
+                  'Xfce4 Terminal': 'xfce4-terminal --tab -T "%d" -e "telnet %h %p"' + devnull,
+                  'ROXTerm': 'roxterm -n "%d" --tab -e "telnet %h %p"' + devnull,
+                  'KDE Konsole': 'konsole --new-tab -p tabtitle="%d" -e "telnet %h %p"' + devnull,
+                  'SecureCRT': 'SecureCRT /T /N "%d"  /TELNET %h %p' + devnull,
+                  'Mate Terminal': 'mate-terminal --tab -e "telnet %h %p"  -t "%d"' + devnull,
+                  'urxvt': 'urxvt -title %d -e telnet %h %p' + devnull}
+
+    VNC_CMD = {"TightVNC": 'vncviewer %h:%p' + devnull,
+               "Vinagre": 'vinagre %h:%p' + devnull,
+               "gvncviewer": 'gvncviewer %h:%p' + devnull}
 
 
 if __name__ == "__main__":

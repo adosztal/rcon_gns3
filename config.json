@@ -1,1 +1,13 @@
-{"project": "test", "console": {"vnc_selected": "TightVNC", "telnet_selected": "ROXTerm", "vnc_custom": "", "telnet_custom": ""}, "server": {"ip": "172.26.1.4", "port": "8000"}}
+{
+    "console": {
+        "telnet_custom": "", 
+        "telnet_selected": "ROXTerm", 
+        "vnc_custom": "", 
+        "vnc_selected": "TightVNC"
+    }, 
+    "project": "test", 
+    "server": {
+        "ip": "172.26.1.4", 
+        "port": "8000"
+    }
+}
