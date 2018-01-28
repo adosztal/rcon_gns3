@@ -3,7 +3,8 @@
 """
 Remote console for GNS3
 
-It's useful when
+It's very lightweight and useful in a group project where most of the
+computers don't have enough resources to run virtualized devices.
 """
 
 from __future__ import print_function
@@ -25,7 +26,7 @@ def load_config():
 
 def write_config(new_config):
     """
-    Writes new settings to the config file
+    Writes the modified settings to the config file
     """
     with open("config.json", "w") as config_file:
         json.dump(new_config, config_file)
@@ -132,21 +133,20 @@ def console_connect():
     devnull = ' >/dev/null 2>/dev/null &'
 
     telnet_cmd = {"Xterm": 'xterm -T "%s" -e "telnet %s %s"' + devnull,
-                  "Putty": 'putty -title "%s" -telnet %s %s -sl 2500 -fg SALMON1 -bg BLACK' + devnull,
+                  "Putty": 'putty -title "%s" -telnet %s %s -fg SALMON1 -bg BLACK' + devnull,
                   "Gnome Terminal": 'gnome-terminal -t "%s" -e "telnet %s %s"' + devnull,
                   "Xfce4 Terminal": 'xfce4-terminal --tab -T "%s" -e "telnet %s %s"' + devnull,
                   "ROXTerm": 'roxterm -n "%s" --tab -e "telnet %s %s"' + devnull,
                   "KDE Konsole": 'konsole --new-tab -p tabtitle="%s" -e "telnet %s %s"' + devnull,
                   "SecureCRT": 'SecureCRT /T /N "%s"  /TELNET %s %s' + devnull,
                   "Mate Terminal": 'mate-terminal --tab -e "telnet %s %s" -t "%s"' + devnull,
-                  "Custom": '%s' + devnull % config["console"]["telnet_custom"]}
+                  "Custom": '%s' % config["console"]["telnet_custom"] + devnull}
 
     vnc_cmd = {
         "TightVNC": 'vncviewer %s:%s' + devnull,
         "Vinagre": 'vinagre %s:%s' + devnull,
         "gvncviewer": 'gvncviewer %s:%s' + devnull,
-        "Custom" : '%s >/dev/null 2>/dev/null &' % config["console"]["vnc_custom"]
-    }
+        "Custom" : '%s' % config["console"]["vnc_custom"] + devnull}
 
     node_menu = True
     while node_menu:
@@ -156,7 +156,7 @@ def console_connect():
         nodes_list = get_nodes(config_ip, config_port, project_id)
         parsed_nodes = parse_nodes(nodes_list)
 
-        # Print nodes
+        # Print nodes, asks for user input
         if parsed_nodes:
             os.system("cls" if os.name == "nt" else "clear")
             print (
@@ -173,15 +173,18 @@ def console_connect():
             i += 1
             print("%d) Exit\n" % i)
             node_choice = raw_input("Enter your choice: ")
+
+            # The try below checks input value; if it's not a number then sets the value
+            # so high that it will always be out of range
             try:
                 node_choice = int(node_choice)
             except ValueError as err:
                 node_choice = 9999
-                raw_input("Error: %s\nWrong selection. Press Enter to try again." % err)
+                raw_input("Error: %s\nPress Enter to try again." % err)
             else:
-                if node_choice > i:
+                if node_choice > i: # Higher number was entered than the available options
                     raw_input("Wrong selection. Press Enter to try again.")
-                elif node_choice == i:
+                elif node_choice == i: # Last option is always exiting
                     quit()
                 elif node_choice == i-1: # Going back to the main menu
                     node_menu = False
@@ -189,6 +192,9 @@ def console_connect():
                     for node in parsed_nodes:
                         print(node)
                         if node[3] == "telnet":
+                            # The following command selects the telnet command from the
+                            # predefined list, then replaces the %s variables with the
+                            # name, ip, and port values. Then the command is executed.
                             console_cmd = telnet_cmd[config_console_telnet] % \
                                                 (node[0], \
                                                 node[1], \
@@ -201,7 +207,9 @@ def console_connect():
                             os.system(console_cmd)
                         sleep(0.333)
                 else: # Opening the selected node
-                    selected_node = node_choice-1
+                    selected_node = node_choice-1 # List count starts from zero; our list from 1
+                    # Checks if the node required telnet or VNCm then, as above, replaces the
+                    # %s variables witn the name, ip, and port values. Then the command is executed
                     if parsed_nodes[selected_node][3] == "telnet":
                         console_cmd = telnet_cmd[config_console_telnet] % \
                                             (parsed_nodes[selected_node][0], \
@@ -213,7 +221,7 @@ def console_connect():
                                             parsed_nodes[selected_node][1], \
                                             parsed_nodes[selected_node][2])
                         os.system(console_cmd)
-        return
+    return
 
 
 def switch_project(gns3_ip, gns3_port):
@@ -222,25 +230,30 @@ def switch_project(gns3_ip, gns3_port):
     """
 
     i = 0
-    projects = get_project(gns3_ip, gns3_port)
-    os.system("cls" if os.name == "nt" else "clear")
-    print (
-        """Remote Console for GNS3\n"""
-        """=======================\n\n"""
-        """Available projects:""")
-    for project in projects:
-        i += 1
-        print("%d) %s" % (i, project["name"]))
-    project_choice = raw_input("\nEnter your choice: ")
-    try:
-        project_choice = int(project_choice)
-    except ValueError as err:
-        raw_input("Error: %s \nPress Enter to continue." % err)
-    else:
-        config = load_config()
-        config["project"] = projects[project_choice-1]["name"]
-        write_config(config)
-        return
+    menu_projects = True
+    projects = get_project(gns3_ip, gns3_port) # Retrieves all projects
+
+    while menu_projects:
+        os.system("cls" if os.name == "nt" else "clear")
+        print (
+            """Remote Console for GNS3\n"""
+            """=======================\n\n"""
+            """Available projects:""")
+        for project in projects:
+            # Printing the projects' names
+            i += 1
+            print("%d) %s" % (i, project["name"]))
+        project_choice = raw_input("\nEnter your choice: ")
+        try:
+            project_choice = int(project_choice)
+        except ValueError as err:
+            raw_input("Error: %s \nPress Enter to continue." % err)
+        else:
+            # Replacing the project name in the config file
+            config = load_config()
+            config["project"] = projects[project_choice-1]["name"]
+            write_config(config)
+            return
 
 
 def set_server(old_ip, old_port):
@@ -250,6 +263,7 @@ def set_server(old_ip, old_port):
 
     server_menu = True
     while server_menu:
+        # Asking for user input
         os.system("cls" if os.name == "nt" else "clear")
         print (
             """Remote Console for GNS3\n"""
@@ -257,13 +271,13 @@ def set_server(old_ip, old_port):
         new_ip = raw_input("Enter the GNS3 server IP [%s]: " % old_ip)
         new_port = raw_input("Enter the GNS3 server IP [%s]: " % old_port)
 
-        # Input checking
+        # Input checking, if nothing is entered, the old values will be used
         if not new_ip:
             new_ip = old_ip
         if not new_port:
             new_port = old_port
 
-        # Validation
+        # Validation by making an API call
         url = "http://%s:%s/v2/projects" % (new_ip, new_port)
 
         try:
@@ -272,6 +286,7 @@ def set_server(old_ip, old_port):
             err_message = "Error when connecting to GNS3 server: %s)" % err.reason
             raw_input("%s\nPress Enter to try again." % err_message)
         else:
+            # Replacing the server settings in the config file
             config = load_config()
             config["server"]["ip"] = new_ip
             config["server"]["port"] = new_port
