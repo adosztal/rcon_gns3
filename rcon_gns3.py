@@ -1,4 +1,19 @@
 #!/usr/bin/python
+#
+# Copyright (C) 2018 Andras Dosztal
+#
+# This program is free software: you can redistribute it and/or modify
+# it under the terms of the GNU General Public License as published by
+# the Free Software Foundation, either version 3 of the License, or
+# (at your option) any later version.
+#
+# This program is distributed in the hope that it will be useful,
+# but WITHOUT ANY WARRANTY; without even the implied warranty of
+# MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+# GNU General Public License for more details.
+#
+# You should have received a copy of the GNU General Public License
+# along with this program. If not, see <http://www.gnu.org/licenses/>.
 
 """
 Remote console for GNS3
@@ -47,6 +62,7 @@ def get_project(gns3_ip, gns3_port):
         return gns3_projects_json
     except urllib2.URLError as err:
         print("Error when connecting to GNS3 server:", err.reason)
+        raw_input("Press Enter to quit.")
         quit()
 
 
@@ -63,7 +79,7 @@ def find_project_id(projects_json, gns3_project_name):
     if project_id:
         return project_id
     else:
-        print("Error: Unknown project.")
+        raw_input("Error: Unknown project. Press Enter to quit.")
         quit()
 
 
@@ -83,6 +99,7 @@ def get_nodes(gns3_ip, gns3_port, gns3_project_id):
 
     except urllib2.URLError as err:
         print("Error when connecting to GNS3 server:", err.reason)
+        raw_input("Press Enter to quit.")
         quit()
 
 
@@ -301,19 +318,19 @@ def set_telnet():
             """Choose an option:\n""")
         if sys.platform.startswith("win"):
             print(
-                """1) Putty"""
-                """2) MobaXterm"""
-                """3) Royal TS"""
-                """4) SuperPutty"""
-                """5) SecureCRT"""
-                """6) SecureCRT (personal profile)"""
-                """7) TeraTerm Pro"""
-                """8) Telnet"""
-                """9) Xshell 4"""
-                """10) Xshell 5"""
-                """11) ZOC 6"""
-                """12) Custom [%s]"""
-                """13) Return to main menu""" % config_custom_cmd)
+                """1) Putty\n"""
+                """2) MobaXterm\n"""
+                """3) Royal TS\n"""
+                """4) SuperPutty\n"""
+                """5) SecureCRT\n"""
+                """6) SecureCRT (personal profile)\n"""
+                """7) TeraTerm Pro\n"""
+                """8) Telnet\n"""
+                """9) Xshell 4\n"""
+                """10) Xshell 5\n"""
+                """11) ZOC 6\n"""
+                """12) Custom [%s]\n"""
+                """13) Return to main menu\n""" % config_custom_cmd)
 
             telnet_choice = raw_input("Enter your choice [%s]: " % config_console_telnet)
 
@@ -425,10 +442,10 @@ def set_vnc():
             """Choose an option:\n""")
         if sys.platform.startswith("win"):
             print(
-                """1) TightVNC"""
-                """2) UltraVNC"""
-                """3) Custom [%s]"""
-                """4) Return to main menu""" % config_custom_cmd)
+                """1) TightVNC\n"""
+                """2) UltraVNC\n"""
+                """3) Custom [%s]\n"""
+                """4) Return to main menu\n""" % config_custom_cmd)
 
             vnc_choice = raw_input("Enter your choice [%s]: " % config_console_vnc)
 
@@ -546,7 +563,7 @@ if sys.platform.startswith("win"):
                   'SecureCRT': r'"{}\VanDyke Software\SecureCRT\SecureCRT.exe" /N "%d" /T /TELNET %h %p'.format(program_files),
                   'SecureCRT (personal profile)': r'"{}\AppData\Local\VanDyke Software\SecureCRT\SecureCRT.exe" /T /N "%d" /TELNET %h %p'.format(userprofile),
                   'TeraTerm Pro': r'"{}\teraterm\ttermpro.exe" /W="%d" /M="ttstart.macro" /T=1 %h %p'.format(program_files_x86),
-                  'Telnet': 'telnet %h %p',
+                  'Telnet': 'cmd /C telnet %h %p',
                   'Xshell 4': r'"{}\NetSarang\Xshell 4\xshell.exe" -url telnet://%h:%p'.format(program_files_x86),
                   'Xshell 5': r'"{}\NetSarang\Xshell 5\xshell.exe" -url telnet://%h:%p -newtab %d'.format(program_files_x86),
                   'ZOC 6': r'"{}\ZOC6\zoc.exe" "/TELNET:%h:%p" /TABBED "/TITLE:%d"'.format(program_files_x86)}
