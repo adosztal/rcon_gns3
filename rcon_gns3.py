@@ -556,7 +556,7 @@ if sys.platform.startswith("win"):
         # windows 32-bit
         program_files_x86 = program_files = os.environ["PROGRAMFILES"]
 
-    TELNET_CMD = {'Putty': 'putty.exe -telnet %h %p -wt "%d" -gns3 5 -skin 4',
+    TELNET_CMD = {'Putty': 'putty.exe -telnet %h %p',
                   'MobaXterm': r'"{}\Mobatek\MobaXterm Personal Edition\MobaXterm.exe" -newtab "telnet %h %p"'.format(program_files_x86),
                   'Royal TS': '{}\code4ward.net\Royal TS V3\RTS3App.exe /connectadhoc:%h /adhoctype:terminal /p:IsTelnetConnection="true" /p:ConnectionType="telnet;Telnet Connection" /p:Port="%p" /p:Name="%d"'.format(program_files),
                   'SuperPutty': r'SuperPutty.exe -telnet "%h -P %p -wt \"%d\""',
