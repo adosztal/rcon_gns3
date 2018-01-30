@@ -534,9 +534,9 @@ def main():
         if main_choice == "1":
             console_connect()
         elif main_choice == "2":
-            switch_project(config_ip, config_port)
-        elif main_choice == "3":
             set_server(config_ip, config_port)
+        elif main_choice == "3":
+            switch_project(config_ip, config_port)
         elif main_choice == "4":
             set_telnet()
         elif main_choice == "5":
