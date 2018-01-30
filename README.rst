@@ -7,7 +7,7 @@ from other boxes. Share the lab and the learning experience!
 
 Special thanks to the GNS3 team and the contributors.
 
-Read the details here: 
+Read the details here: https://adosztal.blogspot.com/p/remote-console-for-gns3.html
 
 TODO
 ----
